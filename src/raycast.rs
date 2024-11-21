@@ -4,8 +4,9 @@ use crate::framebuffer::Framebuffer;
 use crate::player::Player;
 
 pub struct Intersect {
-  pub distance: f32,
-  pub impact: char
+    pub distance: f32,
+    pub impact: char,
+    pub tx: usize,
 }
 
 pub fn cast_ray(
@@ -16,9 +17,9 @@ pub fn cast_ray(
     block_size: usize,
     draw_line: bool,
 ) -> Intersect {
-  let mut d = 0.0;
+    let mut d = 0.0;
 
-  framebuffer.set_current_color(0xFFDDDD);
+    framebuffer.set_current_color(0xFFDDDD);
 
     loop {
         let cos = d * a.cos();
@@ -30,14 +31,25 @@ pub fn cast_ray(
         let j = y / block_size;
 
         if maze[j][i] != ' ' {
-        return Intersect{
-            distance: d,
-            impact: maze[j][i]
-        };
+            let hitx = x - i*block_size;
+            let hity = y - j*block_size;
+            let mut maxhit = hity;
+
+            if 1 < hitx && hitx < block_size - 1 {
+                maxhit = hitx
+            } 
+
+            let tx = (maxhit * 128) / block_size;
+
+            return Intersect{
+                distance: d,
+                impact: maze[j][i],
+                tx: tx
+            };
         }
 
         if draw_line {
-        framebuffer.point(x, y);
+            framebuffer.point(x, y);
         }
 
         d += 1.0;

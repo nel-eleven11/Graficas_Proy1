@@ -4,6 +4,8 @@ use minifb::{Key, Window, WindowOptions};
 use std::time::Duration;
 use std::f32::consts::PI;
 use nalgebra_glm::{Vec2};
+use once_cell::sync::Lazy;
+use std::sync::Arc;
 mod framebuffer;
 use framebuffer::Framebuffer;
 mod maze;
@@ -12,9 +14,16 @@ mod player;
 use player::{Player, process_events};
 mod raycast;
 use raycast::{cast_ray, Intersect};
+mod texture;
+use texture::Texture;
+
+static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall1.png")));
+static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall2.png")));
+static WALL3: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall3.png")));
+static WALL4: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall4.png")));
+static WALL5: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall5.png")));
 
 fn cell_to_color(cell: char) -> u32 {
-
     let default_color = 0x000000;
     match cell {
         '+' => 0xFF00FF,
@@ -22,6 +31,16 @@ fn cell_to_color(cell: char) -> u32 {
         'g' => 0xFF00,
         '|' => 0xCC11CC,
         _ => default_color,
+    }
+}
+
+fn cell_to_texture_color(cell: char, tx: u32, ty: u32) -> u32 {
+    match cell {
+        '+' => WALL4.get_pixel_color(tx, ty),
+        '-' => WALL2.get_pixel_color(tx, ty),
+        '|' => WALL1.get_pixel_color(tx, ty),
+        'g' => WALL5.get_pixel_color(tx, ty),
+        _ => WALL3.get_pixel_color(tx, ty),
     }
 }
 
@@ -39,7 +58,7 @@ fn draw_cell(framebuffer: &mut Framebuffer, xo: usize, yo: usize, block_size: us
 
 fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
     let maze = load_maze("./maze.txt");
-    let block_size = 70; 
+    let block_size = 70; //100
   
     // draw the minimap
     for row in 0..maze.len() {
@@ -62,23 +81,23 @@ fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
   
 fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
     let maze = load_maze("./maze.txt");
-    let block_size = 70; 
+    let block_size = 70; //100
     let num_rays = framebuffer.width;
 
     // let hw = framebuffer.width as f32 / 2.0;   // precalculated half width
     let hh = framebuffer.height as f32 / 2.0;  // precalculated half height
 
     // draw the sky and the floor
-  for i in 0..framebuffer.width {
-    framebuffer.set_current_color(0x383838);
-    for j in 0..(framebuffer.height / 2) {
-      framebuffer.point(i, j);
+    for i in 0..framebuffer.width {
+            framebuffer.set_current_color(0x383838);
+        for j in 0..(framebuffer.height / 2) {
+            framebuffer.point(i, j);
+        }
+        framebuffer.set_current_color(0x717171);
+        for j in (framebuffer.height / 2)..framebuffer.height {
+            framebuffer.point(i, j);
+        }
     }
-    framebuffer.set_current_color(0x717171);
-    for j in (framebuffer.height / 2)..framebuffer.height {
-      framebuffer.point(i, j);
-    }
-  }
 
     framebuffer.set_current_color(0xFFFFFF);
 
@@ -97,22 +116,30 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
         let stake_top = (hh - (stake_height / 2.0)) as usize;
         let stake_bottom = (hh + (stake_height / 2.0)) as usize;
 
-        // Draw the stake directly in the framebuffer
+        // Calculate texture coordinates
+        // Assume the wall texture width is 128 pixels
+        //
+
         for y in stake_top..stake_bottom {
-            let color = cell_to_color(intersect.impact);
+            // Calculate the vertical offset in the texture
+            let ty = (y as f32 - stake_top as f32) / (stake_bottom as f32 - stake_top as f32) * 128.0; // texture
+            // size
+            let tx = intersect.tx;
+            // Get color from the texture
+            let color = cell_to_texture_color(intersect.impact, tx as u32, ty as u32);
             framebuffer.set_current_color(color);
-            framebuffer.point(i, y);
+            framebuffer.point(i, y); // Draw the point in the framebuffer
         }
     }
 }
   
 
 fn main() {
-    let window_width = 900;
-    let window_height = 640;
+    let window_width = 900; //1300
+    let window_height = 640;  //900
 
-    let framebuffer_width = 900;
-    let framebuffer_height = 640;
+    let framebuffer_width = 900; //1300
+    let framebuffer_height = 640; //900
 
     let frame_delay = Duration::from_millis(0);
 
