@@ -11,13 +11,13 @@ pub struct Player {
 } 
 
 pub fn process_events(window: &Window, player: &mut Player) {
-    const MOVE_SPEED: f32 = 10.0;
-    const ROTATION_SPEED: f32 = PI / 10.0;
+    const MOVE_SPEED: f32 = 6.0;
+    const ROTATION_SPEED: f32 = PI / 20.0;
   
-    if window.is_key_down(Key::Left) {
+    if window.is_key_down(Key::Right) {
         player.a += ROTATION_SPEED;
     }
-    if window.is_key_down(Key::Right) {
+    if window.is_key_down(Key::Left) {
         player.a -= ROTATION_SPEED;
     }
     if window.is_key_down(Key::Down) {

@@ -39,7 +39,7 @@ fn draw_cell(framebuffer: &mut Framebuffer, xo: usize, yo: usize, block_size: us
 
 fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
     let maze = load_maze("./maze.txt");
-    let block_size = 100; 
+    let block_size = 70; 
   
     // draw the minimap
     for row in 0..maze.len() {
@@ -52,7 +52,7 @@ fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
     framebuffer.point(player.pos.x as usize, player.pos.y as usize);
   
     // draw what the player sees
-    let num_rays = 5;
+    let num_rays = 50;
     for i in 0..num_rays {
         let current_ray = i as f32 / num_rays as f32; // current ray divided by total rays
         let a = player.a - (player.fov / 2.0) + (player.fov * current_ray);
@@ -62,11 +62,23 @@ fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
   
 fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
     let maze = load_maze("./maze.txt");
-    let block_size = 100; 
+    let block_size = 70; 
     let num_rays = framebuffer.width;
 
     // let hw = framebuffer.width as f32 / 2.0;   // precalculated half width
     let hh = framebuffer.height as f32 / 2.0;  // precalculated half height
+
+    // draw the sky and the floor
+  for i in 0..framebuffer.width {
+    framebuffer.set_current_color(0x383838);
+    for j in 0..(framebuffer.height / 2) {
+      framebuffer.point(i, j);
+    }
+    framebuffer.set_current_color(0x717171);
+    for j in (framebuffer.height / 2)..framebuffer.height {
+      framebuffer.point(i, j);
+    }
+  }
 
     framebuffer.set_current_color(0xFFFFFF);
 
@@ -76,7 +88,7 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
         let intersect = cast_ray(framebuffer, &maze, &player, a, block_size, false);
 
         // Calculate the height of the stake
-        let distance_to_wall = intersect.distance;// how far is this wall from the player
+        let distance_to_wall = intersect.distance * (a - player.a).cos();// how far is this wall from the player
         let distance_to_projection_plane = 70.0; // how far is the "player" from the "camera"
         // this ratio doesn't really matter as long as it is a function of distance
         let stake_height = (hh / distance_to_wall) * distance_to_projection_plane;
@@ -87,7 +99,9 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
 
         // Draw the stake directly in the framebuffer
         for y in stake_top..stake_bottom {
-            framebuffer.point(i, y); // Assuming white color for the stake
+            let color = cell_to_color(intersect.impact);
+            framebuffer.set_current_color(color);
+            framebuffer.point(i, y);
         }
     }
 }
@@ -95,10 +109,10 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
 
 fn main() {
     let window_width = 900;
-    let window_height = 650;
+    let window_height = 640;
 
     let framebuffer_width = 900;
-    let framebuffer_height = 650;
+    let framebuffer_height = 640;
 
     let frame_delay = Duration::from_millis(0);
 
@@ -123,7 +137,7 @@ fn main() {
         fov: PI / 3.0,
     };
 
-    let mut mode = "3D";
+    let mut mode = "2D";
 
     while window.is_open() {
         // listen to inputs
