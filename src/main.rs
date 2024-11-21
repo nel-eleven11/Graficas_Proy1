@@ -38,9 +38,9 @@ fn draw_cell(framebuffer: &mut Framebuffer, xo: usize, yo: usize, block_size: us
     }   
 }
 
-fn render(framebuffer: &mut Framebuffer, player: &Player) {
+fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
     let maze = load_maze("./maze.txt");
-    let block_size = 70;  // 100 pixels each block
+    let block_size = 70; 
   
     // draw the minimap
     for row in 0..maze.len() {
@@ -54,17 +54,26 @@ fn render(framebuffer: &mut Framebuffer, player: &Player) {
     framebuffer.point(player.pos.x as usize, player.pos.y as usize);
   
     // draw what the player sees
-    cast_ray(framebuffer, &maze, &player, block_size);
+    let num_rays = 5;
+    for i in 0..num_rays {
+      let current_ray = i as f32 / num_rays as f32; // current ray divided by total rays
+      let a = player.a - (player.fov / 2.0) + (player.fov * current_ray);
+      cast_ray(framebuffer, &maze, &player, a, block_size);
+    }
+  }
+
+  fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
+    // not yet implemented
   }
 
   fn main() {
     let window_width = 900;
-    let window_height = 600;
+    let window_height = 650;
   
     let framebuffer_width = 900;
-    let framebuffer_height = 600;
+    let framebuffer_height = 650;
   
-    let frame_delay = Duration::from_millis(16);
+    let frame_delay = Duration::from_millis(0);
   
     let mut framebuffer = Framebuffer::new(framebuffer_width, framebuffer_height);
   
@@ -84,12 +93,18 @@ fn render(framebuffer: &mut Framebuffer, player: &Player) {
     let mut player = Player {
       pos: Vec2::new(150.0, 150.0),
       a: PI / 3.0,
+      fov: PI / 3.0,
     };
+  
+    let mut mode = "2D";
   
     while window.is_open() {
       // listen to inputs
       if window.is_key_down(Key::Escape) {
         break;
+      }
+      if window.is_key_down(Key::M) {
+        mode = if mode == "2D" { "3D" } else { "2D" };
       }
       process_events(&window, &mut player);
   
@@ -97,7 +112,11 @@ fn render(framebuffer: &mut Framebuffer, player: &Player) {
       framebuffer.clear();
   
       // Draw some stuff
-      render(&mut framebuffer, &player);
+      if mode == "2D" {
+        render2d(&mut framebuffer, &player);
+      } else {
+        render3d(&mut framebuffer, &player);
+      }
   
       // Update the window with the framebuffer contents
       window
