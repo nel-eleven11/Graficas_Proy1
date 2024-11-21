@@ -1,21 +1,23 @@
 // main.rs
 
 use minifb::{Key, Window, WindowOptions};
-use std::time::Duration;
+use std::{default, time::Duration};
 mod framebuffer;
 use framebuffer::Framebuffer;
 mod maze;
 use maze::load_maze;
 
 fn cell_to_color(cell: char) -> u32 {
-  match cell {
-    '+' => 0xFF00FF,
-    '-'  => 0xDD11DD,
-    'p' => 0x0000FF,
-    'g' => 0xFF00,
-    '|' => 0xCC11CC,
-    _ => 0x000000,
-  }
+
+    let default_color = 0x000000;
+    match cell {
+        '+' => 0xFF00FF,
+        '-'  => 0xDD11DD,
+        'p' => 0x0000FF,
+        'g' => 0xFF00,
+        '|' => 0xCC11CC,
+        _ => default_color,
+    }
 }
 
 fn draw_cell(framebuffer: &mut Framebuffer, xo: usize, yo: usize, block_size: usize, cell: char) {
