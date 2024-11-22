@@ -147,7 +147,7 @@ fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
   
 fn render3d(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut [f32]) {
     let maze = load_maze("./maze.txt");
-    let block_size = 100; 
+    let block_size = 70; 
     let num_rays = framebuffer.width;
   
     // Precalculate half height of the framebuffer
@@ -204,10 +204,10 @@ fn render_enemies(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut
 
 fn main() {
     let window_width = 900; //1300
-    let window_height = 640;  //900
+    let window_height = 635;  //900
 
     let framebuffer_width = 900; //1300
-    let framebuffer_height = 640; //900
+    let framebuffer_height = 635; //900
 
     let frame_delay = Duration::from_millis(0);
 
@@ -220,12 +220,10 @@ fn main() {
         WindowOptions::default(),
     ).unwrap();
 
-    // move the window around
-    window.set_position(100, 100);
-    window.update();
+    // Carga el laberinto una vez
+    let maze = load_maze("./maze.txt");
 
-    // initialize values
-    framebuffer.set_background_color(0x333355);
+    // Inicializa al jugador
     let mut player = Player {
         pos: Vec2::new(150.0, 150.0),
         a: PI / 3.0,
@@ -236,19 +234,19 @@ fn main() {
     let mut mode = "3D";
 
     while window.is_open() {
-        // listen to inputs
+        // Escucha entradas
         if window.is_key_down(Key::Escape) {
             break;
         }
         if window.is_key_down(Key::M) {
             mode = if mode == "2D" { "3D" } else { "2D" };
         }
-        process_events(&window, &mut player);
+        process_events(&window, &mut player, &maze);
 
-        // Clear the framebuffer
+        // Limpia el framebuffer
         framebuffer.clear();
 
-        // Draw some stuff
+        // Renderiza
         if mode == "2D" {
             render2d(&mut framebuffer, &player);
         } else {
@@ -257,7 +255,8 @@ fn main() {
             render_enemies(&mut framebuffer, &player, &mut z_buffer);
             render_ui(&mut framebuffer);
         }
-    // Update the window with the framebuffer contents
+
+        // Actualiza la ventana con el contenido del framebuffer
         window
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
             .unwrap();
@@ -265,3 +264,4 @@ fn main() {
         std::thread::sleep(frame_delay);
     }
 }
+

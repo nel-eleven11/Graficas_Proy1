@@ -1,5 +1,4 @@
 // player.rs
-
 use nalgebra_glm::Vec2;
 use minifb::{Key, Window};
 use std::f32::consts::PI;
@@ -11,27 +10,53 @@ pub struct Player {
     pub last_mouse_x: Option<f32>, // para rastrear la última posición del mouse
 }
 
-pub fn process_events(window: &Window, player: &mut Player) {
-    const MOVE_SPEED: f32 = 6.0;
-    const ROTATION_SPEED: f32 = PI / 20.0;
+// Tamaño del bloque (debe coincidir con el bloque en `main.rs`)
+const BLOCK_SIZE: f32 = 70.0;
+
+// Verifica si la nueva posición del jugador colisionará con una pared
+fn is_collision(new_pos: Vec2, maze: &Vec<Vec<char>>) -> bool {
+    let maze_row = (new_pos.y / BLOCK_SIZE) as usize;
+    let maze_col = (new_pos.x / BLOCK_SIZE) as usize;
+
+    // Asegúrate de no salir de los límites del laberinto
+    if maze_row >= maze.len() || maze_col >= maze[0].len() {
+        return true; // Bloquea el movimiento si está fuera del laberinto
+    }
+
+    // Verifica si la celda es una pared
+    maze[maze_row][maze_col] != ' '
+}
+
+pub fn process_events(window: &Window, player: &mut Player, maze: &Vec<Vec<char>>) {
+    const MOVE_SPEED: f32 = 10.0;
+    const ROTATION_SPEED: f32 = PI / 15.0;
     const MOUSE_SENSITIVITY: f32 = 0.005; // Ajusta la sensibilidad del ratón
 
-    // Movimiento con teclas WASD
+    let mut new_pos = player.pos;
+
+    // Movimiento hacia adelante (W) y hacia atrás (S)
     if window.is_key_down(Key::W) {
-        player.pos.x += MOVE_SPEED * player.a.cos();
-        player.pos.y += MOVE_SPEED * player.a.sin();
+        new_pos.x += MOVE_SPEED * player.a.cos();
+        new_pos.y += MOVE_SPEED * player.a.sin();
     }
     if window.is_key_down(Key::S) {
-        player.pos.x -= MOVE_SPEED * player.a.cos();
-        player.pos.y -= MOVE_SPEED * player.a.sin();
+        new_pos.x -= MOVE_SPEED * player.a.cos();
+        new_pos.y -= MOVE_SPEED * player.a.sin();
     }
+
+    // Movimiento lateral (A y D)
     if window.is_key_down(Key::A) {
-        player.pos.x -= MOVE_SPEED * (player.a + PI / 2.0).cos();
-        player.pos.y -= MOVE_SPEED * (player.a + PI / 2.0).sin();
+        new_pos.x -= MOVE_SPEED * (player.a + PI / 2.0).cos();
+        new_pos.y -= MOVE_SPEED * (player.a + PI / 2.0).sin();
     }
     if window.is_key_down(Key::D) {
-        player.pos.x += MOVE_SPEED * (player.a + PI / 2.0).cos();
-        player.pos.y += MOVE_SPEED * (player.a + PI / 2.0).sin();
+        new_pos.x += MOVE_SPEED * (player.a + PI / 2.0).cos();
+        new_pos.y += MOVE_SPEED * (player.a + PI / 2.0).sin();
+    }
+
+    // Verifica si la nueva posición es válida (sin colisión)
+    if !is_collision(new_pos, maze) {
+        player.pos = new_pos;
     }
 
     // Rotación con flechas
