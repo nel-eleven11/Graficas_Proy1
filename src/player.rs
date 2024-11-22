@@ -14,22 +14,23 @@ pub struct Player {
 const BLOCK_SIZE: f32 = 70.0;
 
 // Verifica si la nueva posición del jugador colisionará con una pared
-fn is_collision(new_pos: Vec2, maze: &Vec<Vec<char>>) -> bool {
-    let maze_row = (new_pos.y / BLOCK_SIZE) as usize;
-    let maze_col = (new_pos.x / BLOCK_SIZE) as usize;
+pub fn is_collision(x: f32, y: f32, maze: &Vec<Vec<char>>, block_size: usize) -> bool {
+    let maze_x = (x / block_size as f32) as isize;
+    let maze_y = (y / block_size as f32) as isize;
 
-    // Asegúrate de no salir de los límites del laberinto
-    if maze_row >= maze.len() || maze_col >= maze[0].len() {
-        return true; // Bloquea el movimiento si está fuera del laberinto
+    // Verificar si los índices están dentro de los límites del laberinto
+    if maze_x < 0 || maze_y < 0 || maze_y as usize >= maze.len() || maze_x as usize >= maze[0].len() {
+        return true; // Considerar fuera de los límites como una colisión
     }
 
-    // Verifica si la celda es una pared
-    maze[maze_row][maze_col] != ' '
+    let cell = maze[maze_y as usize][maze_x as usize];
+    cell != ' ' && cell != 'g' // Ignorar 'g' como colisión
 }
 
+
 pub fn process_events(window: &Window, player: &mut Player, maze: &Vec<Vec<char>>) {
-    const MOVE_SPEED: f32 = 10.0;
-    const ROTATION_SPEED: f32 = PI / 15.0;
+    const MOVE_SPEED: f32 = 0.75;
+    const ROTATION_SPEED: f32 = PI / 80.0;
     const MOUSE_SENSITIVITY: f32 = 0.005; // Ajusta la sensibilidad del ratón
 
     let mut new_pos = player.pos;
@@ -55,7 +56,7 @@ pub fn process_events(window: &Window, player: &mut Player, maze: &Vec<Vec<char>
     }
 
     // Verifica si la nueva posición es válida (sin colisión)
-    if !is_collision(new_pos, maze) {
+    if !is_collision(new_pos.x, new_pos.y, maze, BLOCK_SIZE as usize) {
         player.pos = new_pos;
     }
 
@@ -84,4 +85,15 @@ pub fn process_events(window: &Window, player: &mut Player, maze: &Vec<Vec<char>
     } else if player.a > 2.0 * PI {
         player.a -= 2.0 * PI;
     }
+}
+
+pub fn check_win_condition(player: &Player, maze: &Vec<Vec<char>>) -> bool {
+    let player_row = (player.pos.y / BLOCK_SIZE) as usize;
+    let player_col = (player.pos.x / BLOCK_SIZE) as usize;
+
+    if player_row >= maze.len() || player_col >= maze[0].len() {
+        return false; // El jugador está fuera de los límites
+    }
+
+    maze[player_row][player_col] == 'g' // Verifica si la celda actual es 'g'
 }

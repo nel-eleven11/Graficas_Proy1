@@ -4,6 +4,7 @@ use minifb::{Key, Window, WindowOptions};
 use std::time::Duration;
 use std::f32::consts::PI;
 use nalgebra_glm::{Vec2};
+use std::process;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 mod framebuffer;
@@ -11,7 +12,7 @@ use framebuffer::Framebuffer;
 mod maze;
 use maze::load_maze;
 mod player;
-use player::{Player, process_events};
+use player::{Player, process_events, check_win_condition};
 mod raycast;
 use raycast::{cast_ray, Intersect};
 mod texture;
@@ -231,7 +232,7 @@ fn main() {
         last_mouse_x: None,
     };
 
-    let mut mode = "3D";
+    let mut mode = "2D";
 
     while window.is_open() {
         // Escucha entradas
@@ -242,6 +243,12 @@ fn main() {
             mode = if mode == "2D" { "3D" } else { "2D" };
         }
         process_events(&window, &mut player, &maze);
+
+         // Verifica la condición de victoria
+        if check_win_condition(&player, &maze) {
+            println!("¡Felicidades! Has ganado el juego.");
+            process::exit(0); // Termina el programa
+        }
 
         // Limpia el framebuffer
         framebuffer.clear();
