@@ -1,6 +1,6 @@
 // audio.rs
 
-use rodio::{Decoder, OutputStream, Sink};
+use rodio::{Decoder, OutputStream, Sink, Source};
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::{Arc, Mutex};
@@ -32,5 +32,15 @@ impl AudioPlayer {
 
     pub fn stop(&self) {
         self.sink.lock().unwrap().stop();
+    }
+
+    pub fn play_loop(&self) {
+        let mut sink_guard = self.sink.lock().unwrap();
+        if sink_guard.empty() {
+            let file = BufReader::new(File::open("assets/death_star_alarm.mp3").unwrap());
+            let source = Decoder::new(file).unwrap();
+            sink_guard.append(source.repeat_infinite()); // Reproducir en bucle
+        }
+        sink_guard.play();
     }
 }

@@ -1,7 +1,7 @@
 // main.rs
 
 use minifb::{Key, Window, WindowOptions};
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::f32::consts::PI;
 use nalgebra_glm::{Vec2};
 use std::process;
@@ -21,6 +21,8 @@ mod enemy;
 use enemy::{Enemy, ENEMY_TEXTURE};
 mod audio;
 use audio::AudioPlayer;
+mod display_stats;
+use display_stats::Timer;
 
 static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall1.jpg")));
 static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall2.jpg")));
@@ -229,8 +231,8 @@ fn main() {
     // Inicializa al jugador
     let mut player = Player {
         pos: Vec2::new(150.0, 150.0),
-        a: PI / 3.0,
-        fov: PI / 3.0,
+        a: std::f32::consts::PI / 3.0,
+        fov: std::f32::consts::PI / 3.0,
         last_mouse_x: None,
     };
 
@@ -239,11 +241,20 @@ fn main() {
     // Inicializar los reproductores de audio
     let background_music = AudioPlayer::new("assets/death_star_alarm.mp3");
     
-
     // Reproducir música de fondo
-    background_music.play();
+    background_music.play_loop();
+
+    // Temporizador
+    let mut timer = Timer::new();
+    let start_time = Instant::now();
+    let max_time: u64 = 100; // Tiempo máximo en segundos
 
     while window.is_open() {
+
+        timer.update();
+        let elapsed_time = start_time.elapsed().as_secs();
+        let time_left = max_time.saturating_sub(elapsed_time);
+
         // Escucha entradas
         if window.is_key_down(Key::Escape) {
             break;
@@ -253,7 +264,21 @@ fn main() {
         }
         process_events(&window, &mut player, &maze);
 
-         // Verifica la condición de victoria
+        // Verifica el tiempo restante
+        let elapsed_time = start_time.elapsed().as_secs();
+        let time_left = 100u64.saturating_sub(elapsed_time);
+
+        // Verificar si el tiempo se agotó
+        if time_left == 0 {
+            background_music.stop();
+            let lose_sound = AudioPlayer::new("assets/explosion_sound.mp3");
+            lose_sound.play();
+            println!("Tiempo agotado. Has perdido el juego.");
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            break;
+        }
+
+        // Verifica la condición de victoria
         if check_win_condition(&player, &maze) {
             // Detén la música de fondo y reproduce el sonido de victoria
             background_music.stop();
@@ -261,6 +286,16 @@ fn main() {
             win_sound.play();
             println!("¡Felicidades! Has ganado el juego.");
             std::thread::sleep(Duration::from_secs(15)); // Espera 5 segundos
+            break;
+        }
+
+        // Verificar si el tiempo se agotó
+        if time_left == 0 {
+            background_music.stop();
+            let lose_sound = AudioPlayer::new("assets/explosion_sound.mp3");
+            lose_sound.play();
+            println!("Tiempo agotado. Has perdido el juego.");
+            std::thread::sleep(std::time::Duration::from_secs(5));
             break;
         }
 
@@ -276,6 +311,13 @@ fn main() {
             render_enemies(&mut framebuffer, &player, &mut z_buffer);
             render_ui(&mut framebuffer);
         }
+
+        // Mostrar FPS y tiempo restante en la esquina superior izquierda
+        window.set_title(&format!(
+            "FPS: {:.1} | Tiempo restante: {}s",
+            timer.get_fps(),
+            time_left
+        ));
 
         // Actualiza la ventana con el contenido del framebuffer
         window
