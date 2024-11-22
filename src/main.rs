@@ -24,6 +24,7 @@ static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wa
 static WALL3: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall3.jpg")));
 static WALL4: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall4.jpg")));
 static WALL5: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall5.jpg")));
+static UI_SPRITE: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/player2.png")));
 const TRANSPARENT_COLOR: u32 = 0xED1C24;
 
 fn cell_to_color(cell: char) -> u32 {
@@ -60,6 +61,7 @@ fn draw_cell(framebuffer: &mut Framebuffer, xo: usize, yo: usize, block_size: us
 }
 
 fn draw_sprite(framebuffer: &mut Framebuffer, player: &Player, enemy: &Enemy, z_buffer: &mut [f32]) {
+
     let sprite_a = (enemy.pos.y - player.pos.y).atan2(enemy.pos.x - player.pos.x);
   
     if sprite_a < -1.0 {  // sprite is behind
@@ -97,8 +99,25 @@ fn draw_sprite(framebuffer: &mut Framebuffer, player: &Player, enemy: &Enemy, z_
                 framebuffer.point(x, y);
                 }
             }
-            // Update the z-buffer for this column
+            // Update the z-buffer for this column 
             z_buffer[x] = sprite_d;
+        }
+    }
+}
+
+fn render_ui(framebuffer: &mut Framebuffer) {
+    let ui_width = 512 as u32; // Adjust this to match your UI sprite width
+    let ui_height = 512 as u32; // Adjust this to match your UI sprite height
+    let ui_x = ((framebuffer.width as f32 / 2.0) - (ui_width as f32 / 2.0)) as u32; // X position of the UI sprite
+    let ui_y = (framebuffer.height - ui_height as usize) as u32; // Y position of the UI sprite
+  
+    for y in 0..ui_height {
+        for x in 0..ui_width {
+            let color = UI_SPRITE.get_pixel_color(x as u32, y as u32);
+            if color != TRANSPARENT_COLOR {
+                framebuffer.set_current_color(color);
+                framebuffer.point((ui_x + x) as usize, (ui_y + y) as usize);
+            }
         }
     }
 }
@@ -182,7 +201,6 @@ fn render_enemies(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut
         draw_sprite(framebuffer, &player, enemy, z_buffer);
     }
 }
-  
 
 fn main() {
     let window_width = 900; //1300
@@ -236,6 +254,7 @@ fn main() {
             let mut z_buffer = vec![f32::INFINITY; framebuffer.width];
             render3d(&mut framebuffer, &player, &mut z_buffer);
             render_enemies(&mut framebuffer, &player, &mut z_buffer);
+            render_ui(&mut framebuffer);
         }
     // Update the window with the framebuffer contents
         window
