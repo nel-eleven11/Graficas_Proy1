@@ -230,9 +230,10 @@ fn main() {
         pos: Vec2::new(150.0, 150.0),
         a: PI / 3.0,
         fov: PI / 3.0,
+        last_mouse_x: None,
     };
 
-    let mut mode = "2D";
+    let mut mode = "3D";
 
     while window.is_open() {
         // listen to inputs
