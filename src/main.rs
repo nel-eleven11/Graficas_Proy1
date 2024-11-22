@@ -16,12 +16,15 @@ mod raycast;
 use raycast::{cast_ray, Intersect};
 mod texture;
 use texture::Texture;
+mod enemy;
+use enemy::{Enemy, ENEMY_TEXTURE};
 
 static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall1.jpg")));
 static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall2.jpg")));
 static WALL3: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall3.jpg")));
 static WALL4: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall4.jpg")));
 static WALL5: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall5.jpg")));
+const TRANSPARENT_COLOR: u32 = 0xED1C24;
 
 fn cell_to_color(cell: char) -> u32 {
     let default_color = 0x000000;
@@ -56,6 +59,50 @@ fn draw_cell(framebuffer: &mut Framebuffer, xo: usize, yo: usize, block_size: us
     }   
 }
 
+fn draw_sprite(framebuffer: &mut Framebuffer, player: &Player, enemy: &Enemy, z_buffer: &mut [f32]) {
+    let sprite_a = (enemy.pos.y - player.pos.y).atan2(enemy.pos.x - player.pos.x);
+  
+    if sprite_a < -1.0 {  // sprite is behind
+        return;
+    }
+  
+    let sprite_d = ((player.pos.x - enemy.pos.x).powi(2) + (player.pos.y - enemy.pos.y).powi(2)).sqrt();
+    
+    if sprite_d < 50.0 {
+        return;
+    }
+  
+    let screen_height = framebuffer.height as f32;
+    let screen_width = framebuffer.width as f32;
+    let sprite_size = (screen_height / sprite_d) * 70.0;
+    let start_x = ((sprite_a - player.a) * (screen_height / player.fov) + screen_width / 2.0 - sprite_size / 2.0) as f32;
+    let start_y = ((screen_height / 2.0) - (sprite_size / 2.0)) as f32;
+    let sprite_size = sprite_size as usize;
+    // println!("sprite_a: {:#?} sprite_d: {:#?} sprite_size: {:#?}", sprite_a, sprite_d, sprite_size);
+  
+    let start_x = start_x.max(0.0) as usize;
+    let start_y = start_y.max(0.0) as usize;
+    let end_x = (start_x + sprite_size).min(framebuffer.width);
+    let end_y = (start_y + sprite_size).min(framebuffer.height);
+  
+    for x in start_x..end_x {
+      // Check if this column of the sprite is in front of what's in the z-buffer
+        if sprite_d < z_buffer[x] {
+            for y in start_y..end_y {
+                let tx = ((x - start_x) * 128 / sprite_size as usize) as u32;
+                let ty = ((y - start_y) * 128 / sprite_size as usize) as u32;
+                let color = ENEMY_TEXTURE.get_pixel_color(tx, ty);
+                if color != TRANSPARENT_COLOR {
+                framebuffer.set_current_color(color);
+                framebuffer.point(x, y);
+                }
+            }
+            // Update the z-buffer for this column
+            z_buffer[x] = sprite_d;
+        }
+    }
+}
+
 fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
     let maze = load_maze("./maze.txt");
     let block_size = 70; //100
@@ -79,17 +126,17 @@ fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
     }
 }
   
-fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
+fn render3d(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut [f32]) {
     let maze = load_maze("./maze.txt");
-    let block_size = 70; //100
+    let block_size = 100; 
     let num_rays = framebuffer.width;
-
-    // let hw = framebuffer.width as f32 / 2.0;   // precalculated half width
-    let hh = framebuffer.height as f32 / 2.0;  // precalculated half height
-
+  
+    // Precalculate half height of the framebuffer
+    let hh = framebuffer.height as f32 / 2.0;  
+  
     // draw the sky and the floor
     for i in 0..framebuffer.width {
-            framebuffer.set_current_color(0x383838);
+        framebuffer.set_current_color(0x383838);
         for j in 0..(framebuffer.height / 2) {
             framebuffer.point(i, j);
         }
@@ -98,38 +145,41 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
             framebuffer.point(i, j);
         }
     }
-
-    framebuffer.set_current_color(0xFFFFFF);
-
+  
+    framebuffer.set_current_color(0x717171);
+  
     for i in 0..num_rays {
-        let current_ray = i as f32 / num_rays as f32; // current ray divided by total rays
+        let current_ray = i as f32 / num_rays as f32;
         let a = player.a - (player.fov / 2.0) + (player.fov * current_ray);
         let intersect = cast_ray(framebuffer, &maze, &player, a, block_size, false);
 
-        // Calculate the height of the stake
-        let distance_to_wall = intersect.distance * (a - player.a).cos();// how far is this wall from the player
-        let distance_to_projection_plane = 100.0; // how far is the "player" from the "camera"
-        // this ratio doesn't really matter as long as it is a function of distance
+        let distance_to_wall = intersect.distance;
+        let distance_to_projection_plane = 70.0;
         let stake_height = (hh / distance_to_wall) * distance_to_projection_plane;
 
-        // Calculate the position to draw the stake
         let stake_top = (hh - (stake_height / 2.0)) as usize;
         let stake_bottom = (hh + (stake_height / 2.0)) as usize;
 
-        // Calculate texture coordinates
-        // Assume the wall texture width is 128 pixels
-        //
-
+        z_buffer[i] = distance_to_wall;
+  
         for y in stake_top..stake_bottom {
-            // Calculate the vertical offset in the texture
             let ty = (y as f32 - stake_top as f32) / (stake_bottom as f32 - stake_top as f32) * 128.0; // texture
-            // size
-            let tx = intersect.tx;
-            // Get color from the texture
-            let color = cell_to_texture_color(intersect.impact, tx as u32, ty as u32);
+            let color = cell_to_texture_color(intersect.impact, intersect.tx as u32, ty as u32);
             framebuffer.set_current_color(color);
-            framebuffer.point(i, y); // Draw the point in the framebuffer
+            framebuffer.point(i, y);
         }
+    }
+}
+  
+fn render_enemies(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut [f32]) {
+    let enemies = vec![
+        Enemy::new(250.0, 250.0),
+        Enemy::new(450.0, 450.0),
+        Enemy::new(650.0, 650.0),
+    ];
+  
+    for enemy in &enemies {
+        draw_sprite(framebuffer, &player, enemy, z_buffer);
     }
 }
   
@@ -183,7 +233,9 @@ fn main() {
         if mode == "2D" {
             render2d(&mut framebuffer, &player);
         } else {
-            render3d(&mut framebuffer, &player);
+            let mut z_buffer = vec![f32::INFINITY; framebuffer.width];
+            render3d(&mut framebuffer, &player, &mut z_buffer);
+            render_enemies(&mut framebuffer, &player, &mut z_buffer);
         }
     // Update the window with the framebuffer contents
         window
