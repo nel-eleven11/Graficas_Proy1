@@ -17,11 +17,11 @@ use raycast::{cast_ray, Intersect};
 mod texture;
 use texture::Texture;
 
-static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall1.png")));
-static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall2.png")));
-static WALL3: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall3.png")));
-static WALL4: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall4.png")));
-static WALL5: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall5.png")));
+static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall1.jpg")));
+static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall2.jpg")));
+static WALL3: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall3.jpg")));
+static WALL4: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall4.jpg")));
+static WALL5: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall5.jpg")));
 
 fn cell_to_color(cell: char) -> u32 {
     let default_color = 0x000000;
@@ -108,7 +108,7 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player) {
 
         // Calculate the height of the stake
         let distance_to_wall = intersect.distance * (a - player.a).cos();// how far is this wall from the player
-        let distance_to_projection_plane = 70.0; // how far is the "player" from the "camera"
+        let distance_to_projection_plane = 100.0; // how far is the "player" from the "camera"
         // this ratio doesn't really matter as long as it is a function of distance
         let stake_height = (hh / distance_to_wall) * distance_to_projection_plane;
 
