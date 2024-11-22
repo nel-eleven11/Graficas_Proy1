@@ -19,6 +19,8 @@ mod texture;
 use texture::Texture;
 mod enemy;
 use enemy::{Enemy, ENEMY_TEXTURE};
+mod audio;
+use audio::AudioPlayer;
 
 static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall1.jpg")));
 static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall2.jpg")));
@@ -215,7 +217,7 @@ fn main() {
     let mut framebuffer = Framebuffer::new(framebuffer_width, framebuffer_height);
 
     let mut window = Window::new(
-        "Rust Graphics - Maze Example",
+        "Rust Graphics - Maze Game",
         window_width,
         window_height,
         WindowOptions::default(),
@@ -234,6 +236,13 @@ fn main() {
 
     let mut mode = "2D";
 
+    // Inicializar los reproductores de audio
+    let background_music = AudioPlayer::new("assets/death_star_alarm.mp3");
+    
+
+    // Reproducir música de fondo
+    background_music.play();
+
     while window.is_open() {
         // Escucha entradas
         if window.is_key_down(Key::Escape) {
@@ -246,8 +255,13 @@ fn main() {
 
          // Verifica la condición de victoria
         if check_win_condition(&player, &maze) {
+            // Detén la música de fondo y reproduce el sonido de victoria
+            background_music.stop();
+            let win_sound = AudioPlayer::new("assets/celebration_sound.mp3");
+            win_sound.play();
             println!("¡Felicidades! Has ganado el juego.");
-            process::exit(0); // Termina el programa
+            std::thread::sleep(Duration::from_secs(15)); // Espera 5 segundos
+            break;
         }
 
         // Limpia el framebuffer
