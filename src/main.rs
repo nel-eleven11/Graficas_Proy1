@@ -251,13 +251,13 @@ fn show_win_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
 	let mut win_screen = Screen::new();
 	win_screen.set_background("assets/win_screen.jpg"); // Establece una imagen de fondo
 	win_screen.add_text(
-		"¡LOGRASTE ESCAPAR A TIEMPO!",
-		framebuffer.width / 2 - 150,
+		"Has escapado de la Death Star",
+		framebuffer.width / 2 - 320,
 		framebuffer.height / 3,
 		3
 	);
 	win_screen.add_text(
-		"",
+		"Presiona Esc para salir",
 		framebuffer.width / 2 - 200,
 		framebuffer.height / 2,
 		2,
@@ -270,21 +270,8 @@ fn show_win_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
 			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
 			.unwrap();
 
-		// Salir del bucle al presionar Enter
-		if window.is_key_down(Key::Enter) {
-			break;
-		}
-
-		std::thread::sleep(Duration::from_millis(16));
-	}
-	loop {
-		win_screen.render( framebuffer);
-		window
-			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
-			.unwrap();
-
-		// Salir del bucle al presionar Enter
-		if window.is_key_down(Key::Enter) {
+		// Salir del bucle al presionar Esc
+		if window.is_key_down(Key::Escape) {
 			break;
 		}
 
@@ -297,13 +284,13 @@ fn show_defeat_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
     let mut defeat_screen = Screen::new();
 	defeat_screen.set_background("assets/lose_screen.jpg"); // Establece una imagen de fondo
 	defeat_screen.add_text(
-		"¡NO LOGRASTE ESCAPAR A TIEMPO",
-		framebuffer.width / 2 - 150,
+		"No has logrado escapar",
+		framebuffer.width / 2 - 245,
 		framebuffer.height / 3,
 		3
 	);
 	defeat_screen.add_text(
-		"",
+		"Presiona Esc para salir",
 		framebuffer.width / 2 - 200,
 		framebuffer.height / 2,
 		2,
@@ -316,8 +303,8 @@ fn show_defeat_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
 			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
 			.unwrap();
 
-		// Salir del bucle al presionar Enter
-		if window.is_key_down(Key::Enter) {
+		// Salir del bucle al presionar Esc
+		if window.is_key_down(Key::Escape) {
 			break;
 		}
 
@@ -325,6 +312,59 @@ fn show_defeat_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
 	}
 }
 
+fn render_minimap(framebuffer: &mut Framebuffer, maze: &Vec<Vec<char>>, player: &Player) {
+    // Configuración del minimapa
+    let minimap_size = 100; // Tamaño total del minimapa
+    let cell_size = minimap_size / maze.len(); // Tamaño de cada celda del minimapa
+    let minimap_x = framebuffer.width - minimap_size - 50; // Margen derecho
+    let minimap_y = 5; // Margen superior
+
+    // Dibujar el minimapa
+    for (row, line) in maze.iter().enumerate() {
+		for (col, &cell) in line.iter().enumerate() {
+			let x = minimap_x + col * cell_size;
+			let y = minimap_y + row * cell_size;
+	
+			// Dibujar la celda solo si está dentro de los límites del framebuffer
+			if x + cell_size < framebuffer.width && y + cell_size < framebuffer.height {
+				let color = match cell {
+					'+' | '-' | '|' => 0x888888, // Pared (gris)
+					'g' => 0x00FF00,            // Meta (verde)
+					_ => 0x000000,              // Espacio vacío (negro)
+				};
+	
+				for i in 0..cell_size {
+					for j in 0..cell_size {
+						framebuffer.set_current_color(color);
+						framebuffer.point(x + i, y + j);
+					}
+				}
+			}
+		}
+	}
+
+    // Dibujar al jugador en el minimapa
+    let player_col = (player.pos.x / 70.0) as usize; // Escalado del jugador según el bloque
+    let player_row = (player.pos.y / 70.0) as usize;
+    let player_x = minimap_x + player_col * cell_size + cell_size / 2;
+    let player_y = minimap_y + player_row * cell_size + cell_size / 2;
+
+    let player_color = 0xFF0000; // Color rojo para el jugador
+    let player_radius = (cell_size / 4) as isize;
+
+    for i in -player_radius..=player_radius {
+		for j in -player_radius..=player_radius {
+			let px = player_x as isize + i;
+			let py = player_y as isize + j;
+	
+			// Asegurarnos de que px y py están dentro de los límites
+			if px >= 0 && py >= 0 && px < framebuffer.width as isize && py < framebuffer.height as isize {
+				framebuffer.set_current_color(player_color);
+				framebuffer.point(px as usize, py as usize); // Convertir de nuevo a usize para dibujar
+			}
+		}
+	}
+}
 
 
 fn main() {
@@ -376,7 +416,7 @@ fn main() {
     // Temporizador
     let mut timer = Timer::new();
     let start_time = Instant::now();
-    let max_time: u64 = 10; // Tiempo máximo en segundos
+    let max_time: u64 = 30; // Tiempo máximo en segundos
 
     while window.is_open() {
 
@@ -396,12 +436,13 @@ fn main() {
 
         // Verifica el tiempo restante
         let elapsed_time = start_time.elapsed().as_secs();
-        let time_left = 10u64.saturating_sub(elapsed_time);
+        let time_left = 30u64.saturating_sub(elapsed_time);
 
         // Verifica la condición de victoria
         if check_win_condition(&player, &maze) {
             // Detén la música de fondo y reproduce el sonido de victoria
             background_music.stop();
+			show_win_screen(&mut window, &mut framebuffer);
             let win_sound = AudioPlayer::new("assets/celebration_sound.mp3");
             win_sound.play();
             println!("¡Felicidades! Has ganado el juego.");
@@ -412,6 +453,7 @@ fn main() {
         // Verificar si el tiempo se agotó
         if time_left == 0 {
             background_music.stop();
+			show_defeat_screen(&mut window, &mut framebuffer);
             let lose_sound = AudioPlayer::new("assets/explosion_sound.mp3");
             lose_sound.play();
             println!("Tiempo agotado. Has perdido el juego.");
@@ -431,6 +473,9 @@ fn main() {
             render_enemies(&mut framebuffer, &player, &mut z_buffer);
             render_ui(&mut framebuffer);
         }
+
+		// Agrega el renderizado del minimapa aquí
+		render_minimap(&mut framebuffer, &maze, &player);
 
         // Mostrar FPS y tiempo restante en la esquina superior izquierda
         window.set_title(&format!(
