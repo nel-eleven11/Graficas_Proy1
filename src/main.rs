@@ -2,27 +2,31 @@
 
 use minifb::{Key, Window, WindowOptions};
 use std::time::{Instant, Duration};
-use std::f32::consts::PI;
-use nalgebra_glm::{Vec2};
-use std::process;
+//use std::f32::consts::PI;
+use nalgebra_glm::Vec2;
+//use std::process;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
+
 mod framebuffer;
-use framebuffer::Framebuffer;
 mod maze;
-use maze::load_maze;
 mod player;
-use player::{Player, process_events, check_win_condition};
 mod raycast;
-use raycast::{cast_ray, Intersect};
 mod texture;
-use texture::Texture;
 mod enemy;
-use enemy::{Enemy, ENEMY_TEXTURE};
 mod audio;
-use audio::AudioPlayer;
 mod display_stats;
+mod screen;
+
+use framebuffer::Framebuffer;
+use maze::load_maze;
+use player::{Player, process_events, check_win_condition};
+use raycast::cast_ray;
+use texture::Texture;
+use enemy::{Enemy, ENEMY_TEXTURE};
+use audio::AudioPlayer;
 use display_stats::Timer;
+use screen::Screen;
 
 static WALL1: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall1.jpg")));
 static WALL2: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wall2.jpg")));
@@ -207,6 +211,122 @@ fn render_enemies(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut
     }
 }
 
+fn show_welcome_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
+
+	// Crear la pantalla de bienvenida
+	let mut welcome_screen = Screen::new();
+	welcome_screen.set_background("assets/main_screen.jpg"); // Establece una imagen de fondo
+	welcome_screen.add_text(
+		"ESCAPE THE DEATH STAR",
+		framebuffer.width / 2 - 150,
+		framebuffer.height / 3,
+		3
+	);
+	welcome_screen.add_text(
+		"Presiona Enter para comenzar",
+		framebuffer.width / 2 - 200,
+		framebuffer.height / 2,
+		2,
+	);
+
+	// Mostrar la pantalla de bienvenida
+	loop {
+		welcome_screen.render( framebuffer);
+		window
+			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
+			.unwrap();
+
+		// Salir del bucle al presionar Enter
+		if window.is_key_down(Key::Enter) {
+			break;
+		}
+
+		std::thread::sleep(Duration::from_millis(16));
+	}
+}
+
+fn show_win_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
+
+	// Crear la pantalla de victoria
+	let mut win_screen = Screen::new();
+	win_screen.set_background("assets/win_screen.jpg"); // Establece una imagen de fondo
+	win_screen.add_text(
+		"¡LOGRASTE ESCAPAR A TIEMPO!",
+		framebuffer.width / 2 - 150,
+		framebuffer.height / 3,
+		3
+	);
+	win_screen.add_text(
+		"",
+		framebuffer.width / 2 - 200,
+		framebuffer.height / 2,
+		2,
+	);
+
+	// Mostrar la pantalla de ganar
+	loop {
+		win_screen.render( framebuffer);
+		window
+			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
+			.unwrap();
+
+		// Salir del bucle al presionar Enter
+		if window.is_key_down(Key::Enter) {
+			break;
+		}
+
+		std::thread::sleep(Duration::from_millis(16));
+	}
+	loop {
+		win_screen.render( framebuffer);
+		window
+			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
+			.unwrap();
+
+		// Salir del bucle al presionar Enter
+		if window.is_key_down(Key::Enter) {
+			break;
+		}
+
+		std::thread::sleep(Duration::from_millis(16));
+	}
+}
+
+fn show_defeat_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
+    // Crear la pantalla de derrota
+    let mut defeat_screen = Screen::new();
+	defeat_screen.set_background("assets/lose_screen.jpg"); // Establece una imagen de fondo
+	defeat_screen.add_text(
+		"¡NO LOGRASTE ESCAPAR A TIEMPO",
+		framebuffer.width / 2 - 150,
+		framebuffer.height / 3,
+		3
+	);
+	defeat_screen.add_text(
+		"",
+		framebuffer.width / 2 - 200,
+		framebuffer.height / 2,
+		2,
+	);
+
+	// Mostrar la pantalla de derrota
+	loop {
+		defeat_screen.render( framebuffer);
+		window
+			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
+			.unwrap();
+
+		// Salir del bucle al presionar Enter
+		if window.is_key_down(Key::Enter) {
+			break;
+		}
+
+		std::thread::sleep(Duration::from_millis(16));
+	}
+}
+
+
+
 fn main() {
     let window_width = 900; //1300
     let window_height = 635;  //900
@@ -218,12 +338,21 @@ fn main() {
 
     let mut framebuffer = Framebuffer::new(framebuffer_width, framebuffer_height);
 
+    println!(
+        "Inicializando Framebuffer con tamaño: {}x{}, buffer: {}",
+        framebuffer_width,
+        framebuffer_height,
+        framebuffer.buffer.len()
+    );
+
     let mut window = Window::new(
         "Rust Graphics - Maze Game",
         window_width,
         window_height,
         WindowOptions::default(),
     ).unwrap();
+
+	show_welcome_screen(&mut window, &mut framebuffer);
 
     // Carga el laberinto una vez
     let maze = load_maze("./maze.txt");
@@ -247,11 +376,12 @@ fn main() {
     // Temporizador
     let mut timer = Timer::new();
     let start_time = Instant::now();
-    let max_time: u64 = 100; // Tiempo máximo en segundos
+    let max_time: u64 = 10; // Tiempo máximo en segundos
 
     while window.is_open() {
 
         timer.update();
+
         let elapsed_time = start_time.elapsed().as_secs();
         let time_left = max_time.saturating_sub(elapsed_time);
 
@@ -266,17 +396,7 @@ fn main() {
 
         // Verifica el tiempo restante
         let elapsed_time = start_time.elapsed().as_secs();
-        let time_left = 100u64.saturating_sub(elapsed_time);
-
-        // Verificar si el tiempo se agotó
-        if time_left == 0 {
-            background_music.stop();
-            let lose_sound = AudioPlayer::new("assets/explosion_sound.mp3");
-            lose_sound.play();
-            println!("Tiempo agotado. Has perdido el juego.");
-            std::thread::sleep(std::time::Duration::from_secs(5));
-            break;
-        }
+        let time_left = 10u64.saturating_sub(elapsed_time);
 
         // Verifica la condición de victoria
         if check_win_condition(&player, &maze) {

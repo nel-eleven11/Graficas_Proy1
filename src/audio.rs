@@ -35,7 +35,7 @@ impl AudioPlayer {
     }
 
     pub fn play_loop(&self) {
-        let mut sink_guard = self.sink.lock().unwrap();
+        let sink_guard = self.sink.lock().unwrap();
         if sink_guard.empty() {
             let file = BufReader::new(File::open("assets/death_star_alarm.mp3").unwrap());
             let source = Decoder::new(file).unwrap();
