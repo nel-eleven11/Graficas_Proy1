@@ -6,7 +6,7 @@
 
 ## Video demostrativo
 
-[![Watch the video](https://img.youtube.com/vi/_zxQbFAqLbIw/0.jpg)](https://youtu.be/zxQbFAqLbIw)
+[![Watch the video](https://img.youtube.com/vi/zxQbFAqLbIw/0.jpg)](https://youtu.be/zxQbFAqLbIw)
 
 ---
 
