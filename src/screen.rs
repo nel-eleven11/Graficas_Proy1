@@ -5,7 +5,7 @@ use crate::texture::Texture;
 
 pub struct Screen {
     background: Option<Texture>, // Imagen de fondo opcional
-    text: Vec<(String, usize, usize, usize)>, // Texto a renderizar: (contenido, x, y, escala)
+    pub text: Vec<(String, usize, usize, usize, u32)>, // Texto: (contenido, x, y, escala, color)
 }
 
 impl Screen {
@@ -21,9 +21,9 @@ impl Screen {
         self.background = Some(Texture::new(image_path));
     }
 
-    // Agregar texto a la pantalla
-    pub fn add_text(&mut self, content: &str, x: usize, y: usize, scale: usize) {
-        self.text.push((content.to_string(), x, y, scale));
+    // Agregar texto con color
+    pub fn add_text(&mut self, content: &str, x: usize, y: usize, scale: usize, color: u32) {
+        self.text.push((content.to_string(), x, y, scale, color));
     }
 
     // Renderizar la pantalla
@@ -34,20 +34,18 @@ impl Screen {
                 for x in 0..framebuffer.width {
                     let tx = (x as u32 * bg.width / framebuffer.width as u32) as u32;
                     let ty = (y as u32 * bg.height / framebuffer.height as u32) as u32;
-        
-                    if tx < bg.width && ty < bg.height {
-                        let color = bg.get_pixel_color(tx, ty);
-                        framebuffer.set_current_color(color);
-                        framebuffer.point(x, y);
-                    }
+                    let color = bg.get_pixel_color(tx, ty);
+                    framebuffer.set_current_color(color);
+                    framebuffer.point(x, y);
                 }
             }
         } else {
             framebuffer.clear(); // Si no hay fondo, limpia el framebuffer
         }
 
-        // Dibujar texto
-        for (content, x, y, scale) in &self.text {
+        // Dibujar textos
+        for (content, x, y, scale, color) in &self.text {
+            framebuffer.set_current_color(*color);
             framebuffer.draw_text(content, *x, *y, *scale);
         }
     }

@@ -36,6 +36,7 @@ static WALL5: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/wa
 static UI_SPRITE: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/player2.png")));
 const TRANSPARENT_COLOR: u32 = 0xED1C24;
 
+
 fn cell_to_color(cell: char) -> u32 {
     let default_color = 0x000000;
     match cell {
@@ -131,8 +132,8 @@ fn render_ui(framebuffer: &mut Framebuffer) {
     }
 }
 
-fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
-    let maze = load_maze("./maze.txt");
+fn render2d(framebuffer: &mut Framebuffer, player: &Player, maze: &Vec<Vec<char>>) {
+    
     let block_size = 70; //100
   
     // draw the minimap
@@ -154,8 +155,8 @@ fn render2d(framebuffer: &mut Framebuffer, player: &Player) {
     }
 }
   
-fn render3d(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut [f32]) {
-    let maze = load_maze("./maze.txt");
+fn render3d(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut [f32], maze: &Vec<Vec<char>>) {
+    
     let block_size = 70; 
     let num_rays = framebuffer.width;
   
@@ -164,17 +165,17 @@ fn render3d(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut [f32]
   
     // draw the sky and the floor
     for i in 0..framebuffer.width {
-        framebuffer.set_current_color(0x383838);
+        framebuffer.set_current_color(0x2B2E3D);
         for j in 0..(framebuffer.height / 2) {
             framebuffer.point(i, j);
         }
-        framebuffer.set_current_color(0x717171);
+        framebuffer.set_current_color(0x222530);
         for j in (framebuffer.height / 2)..framebuffer.height {
             framebuffer.point(i, j);
         }
     }
   
-    framebuffer.set_current_color(0x717171);
+    framebuffer.set_current_color(0x222530);
   
     for i in 0..num_rays {
         let current_ray = i as f32 / num_rays as f32;
@@ -211,56 +212,88 @@ fn render_enemies(framebuffer: &mut Framebuffer, player: &Player, z_buffer: &mut
     }
 }
 
-fn show_welcome_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
+fn show_welcome_screen(window: &mut Window, framebuffer: &mut Framebuffer) -> String {
+    // Crear la pantalla de bienvenida
+    let mut welcome_screen = Screen::new();
+    welcome_screen.set_background("assets/main_screen.jpg"); // Imagen de fondo
 
-	// Crear la pantalla de bienvenida
-	let mut welcome_screen = Screen::new();
-	welcome_screen.set_background("assets/main_screen.jpg"); // Establece una imagen de fondo
-	welcome_screen.add_text(
-		"ESCAPE THE DEATH STAR",
-		framebuffer.width / 2 - 150,
-		framebuffer.height / 3,
-		3
-	);
-	welcome_screen.add_text(
-		"Presiona Enter para comenzar",
-		framebuffer.width / 2 - 200,
-		framebuffer.height / 2,
-		2,
-	);
+    // Título e instrucciones
+    welcome_screen.add_text(
+        "ESCAPE THE DEATH STAR",
+        framebuffer.width / 2 - 200,
+        framebuffer.height / 4,
+        3,
+        0xFFFFFF, // Blanco
+    );
+    welcome_screen.add_text(
+        "Selecciona un nivel y presiona Enter:",
+        framebuffer.width / 2 - 250,
+        framebuffer.height / 3,
+        2,
+        0xFFFFFF, // Blanco
+    );
 
-	// Mostrar la pantalla de bienvenida
-	loop {
-		welcome_screen.render( framebuffer);
-		window
-			.update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
-			.unwrap();
+    let levels = vec!["Nivel 1", "Nivel 2", "Nivel 3"];
+    let mut selected_level = 0; // Índice del nivel seleccionado
 
-		// Salir del bucle al presionar Enter
-		if window.is_key_down(Key::Enter) {
-			break;
-		}
+    loop {
+        // Actualizar los textos dinámicos (niveles)
+        welcome_screen.text.truncate(2); // Mantener solo título e instrucciones
+        for (i, level) in levels.iter().enumerate() {
+            let color = if i == selected_level { 0x00FF00 } else { 0xFFFFFF }; // Verde para seleccionado
+            welcome_screen.add_text(
+                level,
+                framebuffer.width / 2 - 50,
+                framebuffer.height / 2 + i * 30,
+                2,
+                color,
+            );
+        }
 
-		std::thread::sleep(Duration::from_millis(16));
-	}
+        // Renderizar la pantalla
+        welcome_screen.render(framebuffer);
+        window
+            .update_with_buffer(&framebuffer.buffer, framebuffer.width, framebuffer.height)
+            .unwrap();
+
+        // Procesar entrada del usuario
+        if window.is_key_down(Key::Up) && selected_level > 0 {
+            selected_level -= 1; // Mover hacia arriba en la lista
+        }
+        if window.is_key_down(Key::Down) && selected_level < levels.len() - 1 {
+            selected_level += 1; // Mover hacia abajo en la lista
+        }
+        if window.is_key_down(Key::Enter) {
+            // Devuelve el archivo de laberinto correspondiente al nivel seleccionado
+            return format!("maze{}.txt", selected_level + 1);
+        }
+
+        // Evitar detección repetida de teclas
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
+
 
 fn show_win_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
 
 	// Crear la pantalla de victoria
 	let mut win_screen = Screen::new();
+	let color = 0xFFFFFF; // Color blanco
 	win_screen.set_background("assets/win_screen.jpg"); // Establece una imagen de fondo
 	win_screen.add_text(
 		"Has escapado de la Death Star",
 		framebuffer.width / 2 - 320,
 		framebuffer.height / 3,
-		3
+		3,
+		color,
+
 	);
 	win_screen.add_text(
 		"Presiona Esc para salir",
 		framebuffer.width / 2 - 200,
 		framebuffer.height / 2,
 		2,
+		color,
 	);
 
 	// Mostrar la pantalla de ganar
@@ -282,18 +315,21 @@ fn show_win_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
 fn show_defeat_screen(window: &mut Window, framebuffer: &mut Framebuffer) {
     // Crear la pantalla de derrota
     let mut defeat_screen = Screen::new();
+	let color = 0xFFFFFF; // Color blanco
 	defeat_screen.set_background("assets/lose_screen.jpg"); // Establece una imagen de fondo
 	defeat_screen.add_text(
 		"No has logrado escapar",
 		framebuffer.width / 2 - 245,
 		framebuffer.height / 3,
-		3
+		3,
+		color,
 	);
 	defeat_screen.add_text(
 		"Presiona Esc para salir",
 		framebuffer.width / 2 - 200,
 		framebuffer.height / 2,
 		2,
+		color,
 	);
 
 	// Mostrar la pantalla de derrota
@@ -316,7 +352,7 @@ fn render_minimap(framebuffer: &mut Framebuffer, maze: &Vec<Vec<char>>, player: 
     // Configuración del minimapa
     let minimap_size = 100; // Tamaño total del minimapa
     let cell_size = minimap_size / maze.len(); // Tamaño de cada celda del minimapa
-    let minimap_x = framebuffer.width - minimap_size - 50; // Margen derecho
+    let minimap_x = framebuffer.width - minimap_size - 200; // Margen derecho
     let minimap_y = 5; // Margen superior
 
     // Dibujar el minimapa
@@ -392,10 +428,11 @@ fn main() {
         WindowOptions::default(),
     ).unwrap();
 
-	show_welcome_screen(&mut window, &mut framebuffer);
+	// Mostrar la pantalla de bienvenida y obtener el nivel seleccionado
+	let selected_level = show_welcome_screen(&mut window, &mut framebuffer);
 
-    // Carga el laberinto una vez
-    let maze = load_maze("./maze.txt");
+	// Cargar el laberinto correspondiente al nivel seleccionado
+	let maze = load_maze(&selected_level);
 
     // Inicializa al jugador
     let mut player = Player {
@@ -405,7 +442,7 @@ fn main() {
         last_mouse_x: None,
     };
 
-    let mut mode = "2D";
+    let mut mode = "3D";
 
     // Inicializar los reproductores de audio
     let background_music = AudioPlayer::new("assets/death_star_alarm.mp3");
@@ -466,10 +503,10 @@ fn main() {
 
         // Renderiza
         if mode == "2D" {
-            render2d(&mut framebuffer, &player);
+            render2d(&mut framebuffer, &player, &maze);
         } else {
             let mut z_buffer = vec![f32::INFINITY; framebuffer.width];
-            render3d(&mut framebuffer, &player, &mut z_buffer);
+            render3d(&mut framebuffer, &player, &mut z_buffer, &maze);
             render_enemies(&mut framebuffer, &player, &mut z_buffer);
             render_ui(&mut framebuffer);
         }
